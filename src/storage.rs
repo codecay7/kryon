@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 use crate::error::KryonError;
 
@@ -10,12 +11,14 @@ pub enum Value {
 #[derive(Debug, Default)]
 pub struct Store {
     data: HashMap<String, Value>,
+    expirations: HashMap<String, Instant>,
 }
 
 impl Store {
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
+            expirations: HashMap::new(),
         }
     }
 
@@ -26,24 +29,68 @@ impl Store {
             return Err(KryonError::EmptyKey);
         }
 
-        self.data.insert(key, value);
+        self.data.insert(key.clone(), value);
+        self.expirations.remove(&key);
         Ok(())
     }
 
     pub fn get(&self, key: &str) -> Option<&Value> {
+        if self.is_expired(key) {
+            return None;
+        }
+
         self.data.get(key)
     }
 
+    fn is_expired(&self, key: &str) -> bool {
+        self.expirations
+            .get(key)
+            .is_some_and(|deadline| Instant::now() >= *deadline)
+    }
+
+    pub fn expire(&mut self, key: &str, seconds: u64) -> bool {
+        if !self.data.contains_key(key) {
+            return false;
+        }
+
+        self.expirations.insert(
+            key.to_string(),
+            Instant::now() + Duration::from_secs(seconds),
+        );
+
+        true
+    }
+
+    pub fn ttl(&self, key: &str) -> i64 {
+        if !self.data.contains_key(key) {
+            return -2;
+        }
+
+        let Some(deadline) = self.expirations.get(key) else {
+            return -1;
+        };
+
+        let remaining = deadline.saturating_duration_since(Instant::now());
+
+        if remaining.is_zero() {
+            return -2;
+        }
+
+        remaining.as_secs() as i64
+    }
+
     pub fn delete(&mut self, key: &str) -> bool {
+        self.expirations.remove(key);
         self.data.remove(key).is_some()
     }
 
     pub fn exists(&self, key: &str) -> bool {
-        self.data.contains_key(key)
+        !self.is_expired(key) && self.data.contains_key(key)
     }
 
     pub fn clear(&mut self) {
         self.data.clear();
+        self.expirations.clear();
     }
 
     pub fn len(&self) -> usize {

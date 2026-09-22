@@ -42,6 +42,16 @@ fn execute(store: &mut Store, command: Command) -> String {
         }
 
         Command::Len => store.len().to_string(),
+
+        Command::Expire { key, seconds } => {
+            if store.expire(&key, seconds) {
+                "1".to_string()
+            } else {
+                "0".to_string()
+            }
+        }
+
+        Command::Ttl { key } => store.ttl(&key).to_string(),
     }
 }
 

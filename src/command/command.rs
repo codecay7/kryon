@@ -6,4 +6,6 @@ pub enum Command {
     Exists { key: String },
     Clear,
     Len,
+    Expire { key: String, seconds: u64 },
+    Ttl { key: String },
 }

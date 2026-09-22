@@ -36,7 +36,18 @@ pub fn parse(input: &str) -> Result<Command, ParseError> {
 
         "LEN" if parts.len() == 1 => Ok(Command::Len),
 
-        "SET" | "GET" | "DEL" | "EXISTS" | "CLEAR" | "LEN" => Err(ParseError::InvalidArguments),
+        "EXPIRE" if parts.len() == 3 => Ok(Command::Expire {
+            key: parts[1].to_string(),
+            seconds: parts[2].parse().map_err(|_| ParseError::InvalidArguments)?,
+        }),
+
+        "TTL" if parts.len() == 2 => Ok(Command::Ttl {
+            key: parts[1].to_string(),
+        }),
+
+        "SET" | "GET" | "DEL" | "EXISTS" | "CLEAR" | "LEN" | "EXPIRE" | "TTL" => {
+            Err(ParseError::InvalidArguments)
+        }
 
         _ => Err(ParseError::UnknownCommand),
     }
