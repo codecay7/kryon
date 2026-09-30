@@ -1,12 +1,8 @@
-mod command;
-mod error;
-mod storage;
-
 use std::io::{self, Write};
 
-use command::command::Command;
-use command::parser::parse;
-use storage::{Store, Value};
+use kryon::command::commands::Command;
+use kryon::command::parser::parse;
+use kryon::storage::{Store, Value};
 
 fn execute(store: &mut Store, command: Command) -> String {
     match command {
@@ -17,6 +13,7 @@ fn execute(store: &mut Store, command: Command) -> String {
 
         Command::Get { key } => match store.get(&key) {
             Some(Value::String(value)) => value.clone(),
+            Some(Value::Tombstone) => "(nil)".to_string(),
             None => "(nil)".to_string(),
         },
 
@@ -56,7 +53,9 @@ fn execute(store: &mut Store, command: Command) -> String {
 }
 
 fn main() {
-    let mut store = Store::new();
+    let wal_path = std::env::var("KRYON_WAL_PATH").unwrap_or_else(|_| "kryon.wal".to_string());
+
+    let mut store = Store::open(&wal_path).expect("failed to open Kryon WAL");
 
     println!("Kryon RKV");
     println!("Type commands or 'QUIT' to exit.");

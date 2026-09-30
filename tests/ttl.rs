@@ -5,7 +5,16 @@ use std::io::Write;
 use std::process::{Command, Stdio};
 
 fn run_kryon(input: &str) -> String {
+    let wal_path = std::env::temp_dir().join(format!(
+        "kryon-ttl-{}-{}.wal",
+        std::process::id(),
+        input.len()
+    ));
+
+    let _ = std::fs::remove_file(&wal_path);
+
     let mut child = Command::new(env!("CARGO_BIN_EXE_kryon"))
+        .env("KRYON_WAL_PATH", &wal_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -18,7 +27,11 @@ fn run_kryon(input: &str) -> String {
         .write_all(input.as_bytes())
         .unwrap();
 
-    String::from_utf8_lossy(&child.wait_with_output().unwrap().stdout).to_string()
+    let output = String::from_utf8_lossy(&child.wait_with_output().unwrap().stdout).to_string();
+
+    let _ = std::fs::remove_file(wal_path);
+
+    output
 }
 
 #[test]
@@ -30,7 +43,13 @@ fn expire_command() {
 
 #[test]
 fn expiration_really_happens() {
+    let wal_path =
+        std::env::temp_dir().join(format!("kryon-ttl-expiration-{}.wal", std::process::id()));
+
+    let _ = std::fs::remove_file(&wal_path);
+
     let mut child = Command::new(env!("CARGO_BIN_EXE_kryon"))
+        .env("KRYON_WAL_PATH", &wal_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -57,4 +76,6 @@ fn expiration_really_happens() {
 
     assert!(stdout.contains("(nil)"));
     assert!(stdout.contains("-2"));
+
+    let _ = std::fs::remove_file(wal_path);
 }

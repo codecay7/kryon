@@ -5,6 +5,14 @@ fn run_kryon(input: &str) -> String {
     let mut child = Command::new(env!("CARGO_BIN_EXE_kryon"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .env(
+            "KRYON_WAL_PATH",
+            std::env::temp_dir().join(format!(
+                "kryon-test-{}-{}.wal",
+                std::process::id(),
+                file!().replace("/", "_")
+            )),
+        )
         .spawn()
         .expect("failed to start Kryon");
 

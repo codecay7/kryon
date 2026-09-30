@@ -1,4 +1,4 @@
-use crate::command::command::Command;
+use crate::command::commands::Command;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
